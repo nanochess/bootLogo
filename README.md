@@ -71,7 +71,7 @@ Repeat 10 times FD 10
 
 ### REPEAT 10 [FD 10 RT 20]
 
-Repeat 10 times FD 10 RT 20. Repeat can be nested. If you miss the final ] character then bootLogo will crash.
+Repeat 10 times FD 10 RT 20. REPEAT can be nested. If you somehow miss the final ] character then bootLogo will crash.
 
 ### PU
 
