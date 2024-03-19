@@ -6,10 +6,12 @@
     |_.__/ \___/ \___/ \__\_____/\___/ \__, |\___/ 
                                     __/ |      
                                    |___/
-bootLogo interpreter in 512 bytes (boot sector or COM file)
-by Oscar Toledo G. Mar/18/2024
+### bootLogo interpreter in 512 bytes (boot sector or COM file)
+
+*by Oscar Toledo G. Mar/18/2024*
 
 http://nanochess.org
+
 https://github.com/nanochess
 
 This is a small interpreter of Logo language.
@@ -78,6 +80,12 @@ The following commands are implemented:
 
 		 Exit to command line (only .COM version)
 
+
+## Examples
+
+!(Command sequence)[example1.png]
+
+!(Result of command sequence)[example2.png]
 
 >> ATTENTION <<        
 
