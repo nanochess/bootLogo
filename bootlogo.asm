@@ -38,6 +38,18 @@
 com_file:       equ 0
     %endif
 
+    %ifndef video_mode
+video_mode:     equ 4   ; CGA 320x200x4 colors.
+    %endif
+
+    %ifndef color1
+color1:         equ 1   ; Color for command line.
+    %endif
+
+    %ifndef color2
+color2:         equ 3   ; Color for drawing.
+    %endif
+
     %if com_file
         org 0x0100
     %else
@@ -48,11 +60,14 @@ com_file:       equ 0
 	; Variables are saved into the non-visible portion of video RAM.
 	;
 ANGLE:  equ 0xfa00	; Current angle of the turtle.
-X_COOR: equ 0xfa02	; Current fractional X-coordinate (10.6)
-Y_COOR: equ 0xfa04	; Current fractional Y-coordinate (10.6)
+X_COOR: equ 0xfa02      ; Current fractional X-coordinate (9.7)
+Y_COOR: equ 0xfa04      ; Current fractional Y-coordinate (9.7)
 PEN:	equ 0xfa06	; Current pen state.
 
 BUFFER: equ 0xfb00	; Buffer for commands.
+
+FRACTION_BITS:  equ 7   ; How many bits has the fraction.
+UNIT:   equ 0x01<<FRACTION_BITS ; An unit.
 
 	;
 	; Cold start of bootLogo
@@ -63,19 +78,20 @@ start:
 	;
 command_clearscreen:
         cld
-        mov ax,0x0013	; VGA 320x200x256 colors mode.
+        mov ax,video_mode
         int 0x10	; Set video mode.
 
-        mov ax,0xa000	; Memory segment where video memory is located.
-        mov ds,ax	; Set DS register.
-        mov es,ax	; Set ES register.
+        push cs
+        push cs
+        pop ds
+        pop es
 
         mov di,ANGLE	; Point to ANGLE variable.
         xor ax,ax	; Zero (north)
         stosw		; Store.
-        mov ah,80	; Initial X-coordinate (160 * 128)
+        mov ah,UNIT*160/256     ; Initial X-coordinate.
         stosw		; Store.
-        mov ah,50	; Initial Y-coordinate (100 * 128)
+        mov ah,UNIT*100/256     ; Initial Y-coordinate.
         stosw		; Store.
 	inc ax		; Pen down.
 	stosb		; Store.
@@ -84,10 +100,15 @@ command_clearscreen:
 	; Wait for command.
 	;
 wait_for_command:
-        xor di,di	; Point to top screen row.
-        mov cx,320*8	; 320 pixels and 8 rows.
-        xor al,al	; Black pixels.
-        rep stosb	; Fill.
+        mov ax,wait_for_command
+        push ax
+
+        xor dx,dx       ; Point to command row.
+        call set_cursor
+        mov cx,40       ; Erase the 40 characters.
+        xor bx,bx
+        mov ax,0x0920   ; Function 0x09. AL = ASCII space 0x20.
+        int 0x10        ; Call BIOS.
 
         call xor_turtle	; Show turtle (1st XOR)
 
@@ -99,13 +120,15 @@ input_loop:
 input_loop2:
         push di
         push ax
+        xchg ax,dx
+        mov ah,0
+        mov cl,40
+        div cl          ; Limit column to 0-39.
+        mov dl,ah       ; Column in dl.
         mov dh,0	; Row in dh.
-        mov bh,0	; Page in bh.
-        mov ah,2	; Set video row,column function.
-        int 0x10	; Call BIOS.
-        pop ax
+        call set_cursor
+        pop ax              
         mov cx,1	; One character.
-        mov bx,0x000b	; Page (bh) and color (bl).
         mov ah,0x09	; Output character function.
         int 0x10	; Call BIOS.
         mov ah,0x00	; Wait for key function.
@@ -131,8 +154,6 @@ input_loop2:
         call xor_turtle	; Remove turtle (2nd XOR)
 
 	pop si		; SI points to start of the command buffer.
-	call run_command	; Run the command.
-	jmp wait_for_command	; Wait for another command.
 
 	;
 	; Run a command.
@@ -143,11 +164,10 @@ run_command:
         mov di,commands	; DI points to command list.
 	lodsw		; Read command to execute.
 .1:
-        cs cmp ax,[di]	; Compare with command from table.
+        scasw           ; Compare with command from table.
         jz .2		; Jump if same.
 	scasw		; Avoid command address.
-	scasw		; Avoid command address.
-	cs test byte [di],0xff
+        test byte [di],0xff
         jnz short .1	; Compare another command.
 	jmp short avoid_command
 
@@ -170,7 +190,7 @@ run_command:
         jmp short .3	; Keep reading number.
 .5:
 	dec si
-	cs jmp [di+2]	; Call the command.
+        jmp [di]        ; Call the command.
 
 	;
 	; Avoid extra letters of command.
@@ -192,37 +212,33 @@ avoid_spaces:
 	dec si
 	ret
 
+repeat_loop:
+        pop si
 	;
 	; REPEAT command
 	;
 command_repeat:
+        push si                 ; Save counter of repeats.
+        push cx                 ; Save position in buffer.
 	call avoid_spaces
 	cmp al,'['		; Is it a list of commands?
-	jne .1			; No, jump.
-	inc si			; Avoid list character.
-	;
-	; Repeat loop.
-	;
-.1:	push cx			; Save counter of repeats.
-	push si			; Save position in buffer.
-	push ax
+        pushf
+        jne .2                  ; No, jump.
+        inc si                  ; Avoid list character '['.
 .2:
 	call run_command
-	pop ax
-	push ax
-	cmp al,'['
+        popf
+        pushf
 	jne .3
 	call avoid_spaces
 	cmp al,']'		; Is it end of list?
 	jne .2			; No, keep reading commands.
 	inc si
 .3:
-	mov di,si		; Exit pointer.
-	pop ax
-	pop si			; Restore position in buffer.
-	pop cx			; Restore counter.
-	loop .1			; Loop.
-	mov si,di		; SI now points >after< the commands.
+        popf
+        pop cx                  ; Restore position in buffer.
+        loop repeat_loop
+        pop di                  ; Forgottens start position, keeps new.
 	ret
 
 	;
@@ -286,7 +302,6 @@ xor_turtle:
         push word [X_COOR]	; Save X-coordinate.
         push word [Y_COOR]	; Save Y-coordinate.
         push word [ANGLE]	; Save current angle.
-        xor bp,bp		; Previous pixel address in BP.
         mov cx,5  		; 5 pixels.
 .1:	call advance_straight	; Advance to get turtle nose.
         loop .1			; Until reaching 5 pixels.
@@ -332,7 +347,8 @@ limit:
         mov ax,128	; Multiply by sin table length.
         mul dx
         div bx		; Divide by 360 degrees.
-
+                        ; Now AX is between 0 and 127.
+                        ; (this means AH is zero)
         ;
         ; Get sine
         ;
@@ -342,9 +358,9 @@ limit:
         je .2
         xor al,31       ; Invert bits (reduces table)
 .2:
-        and ax,31       ; Only 90 degrees in table
+        and al,31       ; Only 90 degrees in table
         mov bx,sin_table
-        cs xlat         ; Get fraction
+        xlat            ; Get fraction
         popf
         je .3           ; Jump if angle less than 180
         neg ax          ; Else negate result
@@ -355,12 +371,11 @@ limit:
 	; Complement pixel and advance straight.
 	;
 pixel_xor:
+        push cx
 	call get_xy
-	cmp bx,bp	; Same pixel as before?
-	jz .2		; Yes, jump to avoid XOR'ing same pixel.
-	mov bp,bx	; Copy address.
-        xor byte [bx],0x0f
-.2:
+        or al,0x80      ; XOR mode.
+        int 0x10
+        pop cx
 	;
 	; Advance turtle in straight direction.
 	;
@@ -383,26 +398,32 @@ advance:
 pixel_set:
 	test byte [PEN],0xff
 	jz .1
+        push cx
 	call get_xy
-        mov byte [bx],0x0f	; Set pixel to white.
+        int 0x10
+        pop cx
 .1:
         ret
 
 	;
-	; Get current X,Y integer coordinates and address for Video RAM.
+        ; Get current X,Y integer coordinates.
 	;
 get_xy:
-        push cx
-        mov ax,[Y_COOR]	; Get Y-coordinate.
-        mov cl,7
-        shr ax,cl	; Remove fractional part.
-        mov bx,[X_COOR]	; Get X-coordinate.
-        shr bx,cl	; Remove fractional part.
-        pop cx
-        mov dx,320
-        mul dx
-        add bx,ax
+        mov cl,FRACTION_BITS
+        mov ax,[X_COOR] ; Get X-coordinate.
+        shr ax,cl       ; Remove fractional part.
+        mov dx,[Y_COOR] ; Get Y-coordinate.
+        shr dx,cl       ; Remove fractional part.
+        xchg ax,cx
+        mov bh,0x00     ; Page.
+        mov ax,0x0c*256+color2     ; Set pixel function in AH. Color in AL.
 	ret
+
+set_cursor:
+        mov bx,color1   ; Page (bh) and color (bl).
+        mov ah,0x02     ; Set video row,column function.
+        int 0x10	; Call BIOS.
+        ret
 
 commands:
         db "FD"
@@ -426,6 +447,9 @@ commands:
 	;
 	; The end of commands list is signalled by a zero byte
 	; (provided by first byte of sin_table)
+        ;
+        ; sin() function table
+        ; It must follow FRACTION_BITS.
 	;
 sin_table:
 	db 0x00, 0x06, 0x0d, 0x13, 0x19, 0x1f, 0x25, 0x2b

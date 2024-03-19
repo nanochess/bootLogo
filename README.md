@@ -16,7 +16,7 @@ https://github.com/nanochess
 
 This is a small interpreter of Logo language.
 
-It's compatible with the 8088 processor (the original IBM PC), but it requires a VGA-compatible card.
+It's compatible with the 8088 processor (the original IBM PC), and it even works on CGA mode!
 
 If you want to assemble it, you must download the Netwide Assembler (NASM) from www.nasm.us
 
@@ -28,6 +28,12 @@ Use this command line:
 Tested with VirtualBox for macOS running Windows XP running this interpreter, it also works with DOSBox and probably with QEMU:
 
     qemu-system-x86_64 -fda bootlogo.img
+
+You can set also the following labels:
+
+* video_mode. This sets the video mode used for bootLogo (default = 4 for CGA mode 320x200x4 colors). A good alternative is 13 (EGA/VGA 320x200x16 mode).
+* color1. This sets the color for the letters in the command line (default = 1 for CGA mode)
+* color2. This sets the color for line drawing (default = 3 for CGA mode)
 
 Enjoy it!
 
@@ -88,7 +94,7 @@ Exit to command line (only .COM version)
 ## Acknowledgments
 
 * jcmeyrignac for an idea to make smaller the number decoding.
-* Jim Leonard (MobyGamer) for making me thinking about a higher-precision sin function.
+* Jim Leonard (MobyGamer) for making me thinking about a higher-precision sin function, and suggesting me the use of the Set Pixel BIOS service.
 * raulamd for reminding me that cubicDoom had a smaller sin function.
 
 ## More on this?
