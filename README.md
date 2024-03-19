@@ -83,21 +83,21 @@ The following commands are implemented:
 
 ## Examples
 
-!(Command sequence)[example1.png]
+![bootLogo command sequence](example1.png)
 
-!(Result of command sequence)[example2.png]
+![Result of command sequence](example2.png)
 
->> ATTENTION <<        
+## More on this?
 
 Do you would to learn 8086/8088 assembler? Get my book Programming Boot Sector Games containing a 8086/8088 crash course!
 
 Now available from Lulu:
 
-(Soft-cover)[http://www.lulu.com/shop/oscar-toledo-gutierrez/programming-boot-sector-games/paperback/product-24188564.html]
+[Paperback book](http://www.lulu.com/shop/oscar-toledo-gutierrez/programming-boot-sector-games/paperback/product-24188564.html)
 
-(Hard-cover)[http://www.lulu.com/shop/oscar-toledo-gutierrez/programming-boot-sector-games/hardcover/product-24188530.html]
+[Hard-cover book](http://www.lulu.com/shop/oscar-toledo-gutierrez/programming-boot-sector-games/hardcover/product-24188530.html)
 
-(eBook)[https://nanochess.org/store.html]
+[eBook](https://nanochess.org/store.html)
 
 These are some of the example programs documented profusely
 in the book:
