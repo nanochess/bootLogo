@@ -83,9 +83,9 @@ The following commands are implemented:
 
 ## Examples
 
-![bootLogo command sequence](example1.png)
+![bootLogo command sequence](example3.png)
 
-![Result of command sequence](example2.png)
+![Result of bootLogo command sequence](example4.png)
 
 ## More on this?
 
