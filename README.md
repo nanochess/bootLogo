@@ -1,10 +1,10 @@
-     _                 _   _                       
-    | |               | | | |                      
-    | |__   ___   ___ | |_| |     ___   __ _  ___  
-    | '_ \ / _ \ / _ \| __| |    / _ \ / _` |/ _ \ 
+     _                 _   _
+    | |               | | | |
+    | |__   ___   ___ | |_| |     ___   __ _  ___
+    | '_ \ / _ \ / _ \| __| |    / _ \ / _` |/ _ \
     | |_) | (_) | (_) | |_| |___| (_) | (_| | (_) |
-    |_.__/ \___/ \___/ \__\_____/\___/ \__, |\___/ 
-                                    __/ |      
+    |_.__/ \___/ \___/ \__\_____/\___/ \__, |\___/
+                                    __/ |
                                    |___/
 ### bootLogo interpreter in 512 bytes (boot sector or COM file)
 
@@ -34,9 +34,9 @@ Enjoy it!
 ## User's manual
 
 Line entry is done with keyboard, finish the line with Enter.
-        
+
 Backspace can be used to correct mistakes.
-        
+
 The following commands are implemented:
 
     CLEARSCREEN
@@ -55,7 +55,7 @@ The following commands are implemented:
     BK 40
 
 		Move the turtle 40 pixels backward.
-	
+
 		Caveat: If you use zero, it will be taken as 65536 pixels.
 
     RT 25
@@ -69,14 +69,14 @@ The following commands are implemented:
     REPEAT 10 FD 10
 
 		Repeat 10 times FD 10
-	
+
     REPEAT 10 [FD 10 RT 20]
-		
+
 		Repeat 10 times FD 10 RT 20.
 		Repeat can be nested.
 		If you miss the final ] character then bootLogo will crash.
 
-    QUIT                 
+    QUIT
 
 		 Exit to command line (only .COM version)
 
@@ -111,4 +111,3 @@ in the book:
   * Pillman game.
   * Toledo Atomchess.
   * bootBASIC language.
-
