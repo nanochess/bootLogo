@@ -39,53 +39,57 @@ Backspace can be used to correct mistakes.
 
 The following commands are implemented:
 
-    CLEARSCREEN
+### CLEARSCREEN
 
-		Clears the screen and returns the turtle to the center,
-		and pointing to the north.
+Clears the screen and returns the turtle to the center, and pointing to the north. This command can only be used alone.
 
-		This command can only be used alone.
+### FD 40
 
-    FD 40
+Move the turtle 40 pixels ahead. Caveat: If you use zero, it will be taken as 65536 pixels.
 
-		Move the turtle 40 pixels ahead.
+### BK 40
 
-		Caveat: If you use zero, it will be taken as 65536 pixels.
+Move the turtle 40 pixels backward. Caveat: If you use zero, it will be taken as 65536 pixels.
 
-    BK 40
+### RT 25
 
-		Move the turtle 40 pixels backward.
+Rotate the turtle  25 degrees clockwise.
 
-		Caveat: If you use zero, it will be taken as 65536 pixels.
+### LT 25
 
-    RT 25
+Rotate the turtle 25 degrees counterclockwise.
 
-		Rotate the turtle 25 degrees clockwise.
+### REPEAT 10 FD 10
 
-    LT 25
+Repeat 10 times FD 10
 
-		Rotate the turtle 25 degrees counterclockwise.
+### REPEAT 10 [FD 10 RT 20]
 
-    REPEAT 10 FD 10
+Repeat 10 times FD 10 RT 20. Repeat can be nested. If you miss the final ] character then bootLogo will crash.
 
-		Repeat 10 times FD 10
+### PU
 
-    REPEAT 10 [FD 10 RT 20]
+Pen up. The turtle doesn't draw for following commands.
 
-		Repeat 10 times FD 10 RT 20.
-		Repeat can be nested.
-		If you miss the final ] character then bootLogo will crash.
+### PD
 
-    QUIT
+Pen down. The turtle draws again.
 
-		 Exit to command line (only .COM version)
+### QUIT
 
+Exit to command line (only .COM version)
 
 ## Examples
 
 ![bootLogo command sequence](example3.png)
 
 ![Result of bootLogo command sequence](example4.png)
+
+## Acknowledgments
+
+* jcmeyrignac for an idea to make smaller the number decoding.
+* Jim Leonard (MobyGamer) for making me thinking about a higher-precision sin function.
+* raulamd for reminding me that cubicDoom had a smaller sin function.
 
 ## More on this?
 
