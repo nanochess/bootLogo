@@ -31,6 +31,7 @@
 	;			Repeat can be nested.
 	; PU                    Pen up (turtle doesn't draw).
 	; PD                    Pen down (turtle draws).
+        ; SETCOLOR 1            Set color for pen.
         ; QUIT                  Exit to command line (only .COM version)
 	;
 
@@ -63,6 +64,7 @@ ANGLE:  equ 0xfa00	; Current angle of the turtle.
 X_COOR: equ 0xfa02      ; Current fractional X-coordinate (9.7)
 Y_COOR: equ 0xfa04      ; Current fractional Y-coordinate (9.7)
 PEN:	equ 0xfa06	; Current pen state.
+COLOR:	equ 0xfa07	; Current pen color.
 
 BUFFER: equ 0xfb00	; Buffer for commands.
 
@@ -88,13 +90,15 @@ command_clearscreen:
 
         mov di,ANGLE	; Point to ANGLE variable.
         xor ax,ax	; Zero (north)
-        stosw		; Store.
+        stosw		; Store word.
         mov ah,UNIT*160/256     ; Initial X-coordinate.
-        stosw		; Store.
+        stosw		; Store word.
         mov ah,UNIT*100/256     ; Initial Y-coordinate.
-        stosw		; Store.
+        stosw		; Store word.
 	inc ax		; Pen down.
-	stosb		; Store.
+	stosb		; Store byte.
+	mov al,color2	; Color for pen.
+	stosb		; Store byte.
 
 	;
 	; Wait for command.
@@ -105,9 +109,8 @@ wait_for_command:
 
         xor dx,dx       ; Point to command row.
         call set_cursor
-        mov cx,40       ; Erase the 40 characters.
-        xor bx,bx
-        mov ax,0x0920   ; Function 0x09. AL = ASCII space 0x20.
+        mov ax,0x0920   ; Output character function in AH and space in AL.
+        mov cl,40       ; Erase the 40 characters.
         int 0x10        ; Call BIOS.
 
         call xor_turtle	; Show turtle (1st XOR)
@@ -128,8 +131,8 @@ input_loop2:
         mov dh,0	; Row in dh.
         call set_cursor
         pop ax              
-        mov cx,1	; One character.
-        mov ah,0x09	; Output character function.
+        mov ah,0x09     ; Output character function in AH.
+        inc cx          ; One character.
         int 0x10	; Call BIOS.
         mov ah,0x00	; Wait for key function.
         int 0x16	; Call BIOS.
@@ -138,7 +141,7 @@ input_loop2:
 	jne .2		; No, jump.
 	mov dx,di	; Point to previous character.
 	dec di		; Buffer pointer gets back.
-	mov al,0x20	; Erase previous character.
+        mov al,' '      ; Erase previous character with a space.
 	jmp input_loop2
 .2:
         cmp al,'a'	; Is it lowercase?
@@ -233,7 +236,7 @@ command_repeat:
 	call avoid_spaces
 	cmp al,']'		; Is it end of list?
 	jne .2			; No, keep reading commands.
-	inc si
+        inc si                  ; Avoid list character ']'.
 .3:
         popf
         pop cx                  ; Restore position in buffer.
@@ -242,25 +245,33 @@ command_repeat:
 	ret
 
 	;
-	; FD command.
-	;
-command_fd:
-.1:
-        call pixel_set	; Set pixel.
-        call advance_straight	; Advance turtle.
-        loop .1		; Repeat per pixel count.
-        ret		; Return.
-
-	;
 	; BK command.
 	;
 command_bk:
-.1:
-        call pixel_set	; Set pixel.	
-        mov ax,-180	; Opposite direction offset.
-        call advance	; Advance turtle.
-        loop .1		; Repeat per pixel count.
-        ret		; Return.
+        mov ax,-180
+        db 0xba         ; mov dx, to jump following instruction.
+	;
+	; FD command.
+	;
+command_fd:
+        xor ax,ax
+	;
+	; Set pixel.
+	; 
+pixel_set:
+        push ax
+	test byte [PEN],0xff
+	jz .1
+        push cx
+	call get_xy
+        int 0x10
+        pop cx
+.1:     pop ax
+        push ax
+        call advance
+        pop ax
+        loop pixel_set
+        ret
 
 	;
 	; LT command.
@@ -287,6 +298,13 @@ command_pu:
 command_pd:
 	mov al,1	; Pen down.
 	mov [PEN],al	; Set pen status.
+	ret		; Return.
+
+	;
+	; SETCOLOR command
+	;
+command_setcolor:
+	mov [COLOR],cl	; Save new pen color.
 	ret		; Return.
 
 	;
@@ -393,19 +411,6 @@ advance:
         ret
 
 	;
-	; Set pixel.
-	; 
-pixel_set:
-	test byte [PEN],0xff
-	jz .1
-        push cx
-	call get_xy
-        int 0x10
-        pop cx
-.1:
-        ret
-
-	;
         ; Get current X,Y integer coordinates.
 	;
 get_xy:
@@ -416,13 +421,15 @@ get_xy:
         shr dx,cl       ; Remove fractional part.
         xchg ax,cx
         mov bh,0x00     ; Page.
-        mov ax,0x0c*256+color2     ; Set pixel function in AH. Color in AL.
+	mov al,[COLOR]	; Color in AL.
+        mov ah,0x0c     ; Set pixel function in AH.
 	ret
 
 set_cursor:
         mov bx,color1   ; Page (bh) and color (bl).
-        mov ah,0x02     ; Set video row,column function.
+        mov ah,0x02     ; Set video row, column function.
         int 0x10	; Call BIOS.
+        xor cx,cx
         ret
 
 commands:
@@ -442,11 +449,13 @@ commands:
 	dw command_pd
 	db "CL"
 	dw command_clearscreen
+	db "SE"
+	dw command_setcolor
         db "QU"
         dw command_quit
 	;
-	; The end of commands list is signalled by a zero byte
-	; (provided by first byte of sin_table)
+	; The end of the commands list is signaled by a zero-byte
+	; (provided by the first byte of sin_table)
         ;
         ; sin() function table
         ; It must follow FRACTION_BITS.

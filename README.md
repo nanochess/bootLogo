@@ -81,6 +81,10 @@ Pen up. The turtle doesn't draw for following commands.
 
 Pen down. The turtle draws again.
 
+### SETCOLOR 2
+
+Set color for pen. Only 0-3 available in CGA, and 0-15 for EGA/VGA.
+
 ### QUIT
 
 Exit to command line (only .COM version)
