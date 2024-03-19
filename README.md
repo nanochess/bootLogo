@@ -16,16 +16,16 @@ https://github.com/nanochess
 
 This is a small interpreter of Logo language.
 
-It's compatible with the 8088 processor (the original IBM PC), but it requires a VGA compatible card.
+It's compatible with the 8088 processor (the original IBM PC), but it requires a VGA-compatible card.
 
-If you want to assemble it, you must download the Netwide Assembler (nasm) from www.nasm.us
+If you want to assemble it, you must download the Netwide Assembler (NASM) from www.nasm.us
 
 Use this command line:
 
     nasm -f bin bootlogo.asm -Dcom_file=1 -o bootlogo.com
     nasm -f bin bootlogo.asm -Dcom_file=0 -o bootlogo.img
 
-Tested with VirtualBox for Mac OS X running Windows XP running this interpreter, it also works with DosBox and probably with qemu:
+Tested with VirtualBox for macOS running Windows XP running this interpreter, it also works with DOSBox and probably with QEMU:
 
     qemu-system-x86_64 -fda bootlogo.img
 
@@ -33,7 +33,7 @@ Enjoy it!
 
 ## User's manual
 
-Line entry is done with keyboard, finish the line with Enter.
+Line entry is done with the keyboard, finish the line with Enter.
 
 Backspace can be used to correct mistakes.
 
@@ -89,7 +89,7 @@ The following commands are implemented:
 
 ## More on this?
 
-Do you would to learn 8086/8088 assembler? Get my book Programming Boot Sector Games containing a 8086/8088 crash course!
+Do you want to learn 8086/8088 assembler? Get my book Programming Boot Sector Games containing an 8086/8088 crash course!
 
 Now available from Lulu:
 
