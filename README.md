@@ -1,10 +1,10 @@
-     _                 _   _                       
-    | |               | | | |                      
-    | |__   ___   ___ | |_| |     ___   __ _  ___  
-    | '_ \ / _ \ / _ \| __| |    / _ \ / _` |/ _ \ 
+     _                 _   _
+    | |               | | | |
+    | |__   ___   ___ | |_| |     ___   __ _  ___
+    | '_ \ / _ \ / _ \| __| |    / _ \ / _` |/ _ \
     | |_) | (_) | (_) | |_| |___| (_) | (_| | (_) |
-    |_.__/ \___/ \___/ \__\_____/\___/ \__, |\___/ 
-                                    __/ |      
+    |_.__/ \___/ \___/ \__\_____/\___/ \__, |\___/
+                                    __/ |
                                    |___/
 ### bootLogo interpreter in 512 bytes (boot sector or COM file)
 
@@ -16,16 +16,16 @@ https://github.com/nanochess
 
 This is a small interpreter of Logo language.
 
-It's compatible with the 8088 processor (the original IBM PC), but it requires a VGA compatible card.
+It's compatible with the 8088 processor (the original IBM PC), but it requires a VGA-compatible card.
 
-If you want to assemble it, you must download the Netwide Assembler (nasm) from www.nasm.us
+If you want to assemble it, you must download the Netwide Assembler (NASM) from www.nasm.us
 
 Use this command line:
 
     nasm -f bin bootlogo.asm -Dcom_file=1 -o bootlogo.com
     nasm -f bin bootlogo.asm -Dcom_file=0 -o bootlogo.img
 
-Tested with VirtualBox for Mac OS X running Windows XP running this interpreter, it also works with DosBox and probably with qemu:
+Tested with VirtualBox for macOS running Windows XP running this interpreter, it also works with DOSBox and probably with QEMU:
 
     qemu-system-x86_64 -fda bootlogo.img
 
@@ -33,10 +33,10 @@ Enjoy it!
 
 ## User's manual
 
-Line entry is done with keyboard, finish the line with Enter.
-        
+Line entry is done with the keyboard, finish the line with Enter.
+
 Backspace can be used to correct mistakes.
-        
+
 The following commands are implemented:
 
     CLEARSCREEN
@@ -55,7 +55,7 @@ The following commands are implemented:
     BK 40
 
 		Move the turtle 40 pixels backward.
-	
+
 		Caveat: If you use zero, it will be taken as 65536 pixels.
 
     RT 25
@@ -69,14 +69,14 @@ The following commands are implemented:
     REPEAT 10 FD 10
 
 		Repeat 10 times FD 10
-	
+
     REPEAT 10 [FD 10 RT 20]
-		
+
 		Repeat 10 times FD 10 RT 20.
 		Repeat can be nested.
 		If you miss the final ] character then bootLogo will crash.
 
-    QUIT                 
+    QUIT
 
 		 Exit to command line (only .COM version)
 
@@ -89,7 +89,7 @@ The following commands are implemented:
 
 ## More on this?
 
-Do you would to learn 8086/8088 assembler? Get my book Programming Boot Sector Games containing a 8086/8088 crash course!
+Do you want to learn 8086/8088 assembler? Get my book Programming Boot Sector Games containing an 8086/8088 crash course!
 
 Now available from Lulu:
 
@@ -111,4 +111,3 @@ in the book:
   * Pillman game.
   * Toledo Atomchess.
   * bootBASIC language.
-
