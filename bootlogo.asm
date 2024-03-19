@@ -77,7 +77,7 @@ command_clearscreen:
         stosw		; Store.
         mov ah,50	; Initial Y-coordinate (100 * 128)
         stosw		; Store.
-	inc ax
+	inc ax		; Pen down.
 	stosb		; Store.
 
 	;
@@ -105,7 +105,7 @@ input_loop2:
         int 0x10	; Call BIOS.
         pop ax
         mov cx,1	; One character.
-        mov bx,0x000f	; Page (bh) and color (bl).
+        mov bx,0x000b	; Page (bh) and color (bl).
         mov ah,0x09	; Output character function.
         int 0x10	; Call BIOS.
         mov ah,0x00	; Wait for key function.
@@ -158,7 +158,7 @@ run_command:
         xor cx,cx	; Set number to zero.
 .3:
         lodsb		; Get a character.
-        sub al,0x30	; Is it a number?
+        sub al,'0'	; Is it a number?
         cmp al,10
         jnb .5		; No, jump.
         cbw
@@ -262,22 +262,22 @@ command_rt:
 	; PU command
 	;
 command_pu:
-	mov al,0
-	db 0xba		; MOV DX to avoid following mov al,0 instruction
+	mov al,0	; Pen up.
+	db 0xba		; MOV DX to jump over following instruction
 
 	;
 	; PD command
 	;
 command_pd:
-	mov al,1
-	mov [PEN],al
-	ret
+	mov al,1	; Pen down.
+	mov [PEN],al	; Set pen status.
+	ret		; Return.
 
 	;
 	; QU command.
 	;
 command_quit:
-        int 0x20
+        int 0x20	; Exit to DOS or bootOS.
 
 	;
 	; XOR turtle against the background.
@@ -325,12 +325,11 @@ limit:
 
         cwd
 	idiv bx		; Limit it to 360 degrees...
-	xchg ax,dx	; ...by getting modulo.
-	or ax,ax
+	or dx,dx	; ...by getting modulo.
 	jns .1
-	add ax,bx
+	add dx,bx
 .1:
-        mov dx,128	; Multiply by sin table length.
+        mov ax,128	; Multiply by sin table length.
         mul dx
         div bx		; Divide by 360 degrees.
 
