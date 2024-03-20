@@ -32,7 +32,7 @@
 	; PU                    Pen up (turtle doesn't draw).
 	; PD                    Pen down (turtle draws).
         ; SETCOLOR 1            Set color for pen.
-	; TO name def END.      Defines a procedure "name" with definition "def"
+	; TO name def END       Defines a procedure "name" with definition "def"
 	;                       "def" can be any single command, or a list of
 	;                       commands between [ and ].
         ; QUIT                  Exit to command line (only .COM version)
@@ -82,17 +82,14 @@ PROC_SIZE:	equ 0x007e	; Maximum size of a procedure.
 	; Cold start of bootLogo
 	;
 start:
-	;
-	; Command CLEARSCREEN
-	;
+        push cs		; Use the code segment...
         push cs
-        push cs
-        pop ds
-        pop es
-        cld
-	call command_clearscreen
-	mov ax,PROCS
-	stosw
+        pop ds		; ...to initialize DS, and...
+        pop es		; ...also ES.
+        cld		; Clear direction flag.
+	call command_clearscreen	; Clear the screen.
+	mov ax,PROCS	; Erase all procedures.
+	stosw		; Store word.
 
 	;
 	; Wait for command.
@@ -145,13 +142,13 @@ input_loop3:
 	; Run commands alone or in a list.
 	;
 run_commands:
-	call avoid_spaces
+	call avoid_spaces	; Avoid spaces.
 	cmp al,'['		; Is it a list of commands?
 	jne run_command		; No, jump to process a single command.
         inc si                  ; Avoid list character '['.
 .1:
-	call run_command
-	call avoid_spaces
+	call run_command	; Run a single command.
+	call avoid_spaces	; Avoid spaces.
 	cmp al,']'		; Is it end of list?
 	jne .1			; No, keep reading commands.
         inc si                  ; Avoid list character ']'.
@@ -163,6 +160,9 @@ run_commands:
 	;
 run_command:
 	call avoid_spaces
+	;
+	; Search for builtin commands.
+	;
         mov di,commands	; DI points to command list.
 	mov cx,11	; Eleven commands.
 	lodsw		; Read command to execute.
@@ -172,15 +172,18 @@ run_command:
 	scasb		; Avoid command address.
 	loop .1
 
+	;
+	; Search for defined procedures.
+	; 
 	mov di,PROCS-PROC_SIZE
-.7:	lea di,[di+PROC_SIZE]
-	cmp di,[NEXT]
-	je avoid_command
+.7:	lea di,[di+PROC_SIZE]	; Go to next procedure.
+	cmp di,[NEXT]	; End of defined procedures?
+	je avoid_command	; Yes, jump.
 	scasw		; Compare against procedure name.
 	jnz .7		; Jump if not the same.
 	push si
-	mov si,di
-	call run_commands
+	mov si,di	; Use definition as source pointer.
+	call run_commands	; Run command or commands.
 	pop si
 
 	;
@@ -189,8 +192,8 @@ run_command:
 avoid_command:
 	lodsb
 	sub al,0x41
-	cmp al,0x1a
-	jb avoid_command
+	cmp al,0x1a	; Is it a letter?
+	jb avoid_command	; Yes, jump.
 	dec si
 
 	;
@@ -198,8 +201,8 @@ avoid_command:
 	;
 avoid_spaces:
 	lodsb
-	cmp al,0x20
-	je avoid_spaces
+	cmp al,0x20	; Is it space?
+	je avoid_spaces	; Yes, jump.
 	dec si
 	ret
 
@@ -301,13 +304,13 @@ command_to:
 	; BK command.
 	;
 command_bk:
-        mov ax,-180
+        mov ax,-180	; Reverse direction (-180 degrees)
         db 0xba         ; mov dx, to jump following instruction.
 	;
 	; FD command.
 	;
 command_fd:
-        xor ax,ax
+        xor ax,ax	; Normal direction.
 	;
 	; Set pixel.
 	; 
@@ -367,10 +370,10 @@ xor_turtle:
 .1:	call advance		; Advance to get turtle nose.
         loop .1			; Until reaching 5 pixels.
 				; ch guaranteed to be zero here.
-	mov si,turtle_angles
-.2:	lodsb
-	test al,al
-	jz .4
+	mov si,turtle_angles	; Table to draw the turtle.
+.2:	lodsb			; Get angle for this line.
+	test al,al		; Is it zero?
+	jz .4			; Yes, finish.
 
 	mov cl,5
 	mul cl
@@ -459,8 +462,8 @@ advance:
         ret
 
 set_cursor:
-	mov cx,40
-	sub dl,cl
+	mov cx,40	; 40 columns.
+	sub dl,cl	; Limit column to range 0-39.
 	jnb set_cursor
 	add dl,cl
 	mov dh,21	; Row 21 of the screen.
