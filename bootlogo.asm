@@ -121,7 +121,6 @@ wait_for_command:
 input_loop:
         mov dx,di	; Column in dl.
 input_loop2:
-        push di
         push ax
         xchg ax,dx
         mov ah,0
@@ -136,7 +135,6 @@ input_loop2:
         int 0x10	; Call BIOS.
         mov ah,0x00	; Wait for key function.
         int 0x16	; Call BIOS.
-        pop di
 	cmp al,0x08	; Backspace?
 	jne .2		; No, jump.
 	mov dx,di	; Point to previous character.
@@ -259,17 +257,16 @@ command_fd:
 	; Set pixel.
 	; 
 pixel_set:
-        push ax
 	test byte [PEN],0xff
 	jz .1
+        push ax
         push cx
 	call get_xy
         int 0x10
         pop cx
-.1:     pop ax
-        push ax
+	pop ax
+.1:
         call advance
-        pop ax
         loop pixel_set
         ret
 
@@ -319,20 +316,19 @@ command_quit:
 xor_turtle:
         push word [X_COOR]	; Save X-coordinate.
         push word [Y_COOR]	; Save Y-coordinate.
-        push word [ANGLE]	; Save current angle.
         mov cx,5  		; 5 pixels.
-.1:	call advance_straight	; Advance to get turtle nose.
+	xor ax,ax
+.1:	call advance		; Advance to get turtle nose.
         loop .1			; Until reaching 5 pixels.
 				; ch guaranteed to be zero here.
-        mov ax,-150		; -150 degrees.
+        mov al,210		; +210 degrees offset.
         call xor_line10		; Draw line.
-        mov ax,-140		; -140 degrees.
+        mov al,70		; +70 degrees offset.
         call xor_line		; Draw line.
-        mov ax,40		; 40 degrees.
+        mov al,110		; +110 degrees offset.
         call xor_line		; Draw line.
-        mov ax,-140		; -140 degrees.
+        mov ax,330		; +330 degrees offset.
         call xor_line10		; Draw line.
-        pop word [ANGLE]	; Restore angle.
         pop word [Y_COOR]	; Restore Y-coordinate.
         pop word [X_COOR]	; Restore X-coordinate.
         ret			; Return.
@@ -343,9 +339,15 @@ xor_turtle:
 xor_line10:
 	mov cl,10
 xor_line:
-        add [ANGLE],ax		; Adjust angle per AX.
 .1:
-        call pixel_xor		; Draw XOR'ed pixel.
+	push ax
+        push cx
+	call get_xy		; Get X,Y coordinates.
+        or al,0x80      	; XOR mode.
+        int 0x10		; Draw pixel.
+        pop cx
+	pop ax
+	call advance
         loop .1			; Loop to draw the line.
 	mov cl,5
         ret			; Return.
@@ -386,20 +388,11 @@ limit:
         ret		; Return.
 
 	;
-	; Complement pixel and advance straight.
+	; Advance turtle in direction.
+	; ax = Offset in degrees for angle.
 	;
-pixel_xor:
-        push cx
-	call get_xy
-        or al,0x80      ; XOR mode.
-        int 0x10
-        pop cx
-	;
-	; Advance turtle in straight direction.
-	;
-advance_straight:
-	xor ax,ax
 advance:
+	push ax
 	add ax,[ANGLE]	; Add current angle to offset in ax.
         push ax
         call limit	; Limit angle and get sin.
@@ -408,6 +401,7 @@ advance:
         add ax,90	; For getting cos.
         call limit
         sub [Y_COOR],ax	; Subtract to Y-coordinate.
+	pop ax
         ret
 
 	;
