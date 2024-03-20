@@ -91,6 +91,8 @@ This command allows you to define procedures. All the definition should fit insi
 
 A single command could be a REPEAT. Several commands can be grouped using [ and ].
 
+Only the two first letters of the name are taken in account. The predefined commands have priority (so you cannot define them out). Also, once defined a procedure, it cannot be edited again (sorry, lack of space).
+
 For example:
 
     TO CURVE REPEAT 4 [LT 10 FD 10] END

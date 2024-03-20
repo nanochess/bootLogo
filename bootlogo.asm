@@ -32,6 +32,9 @@
 	; PU                    Pen up (turtle doesn't draw).
 	; PD                    Pen down (turtle draws).
         ; SETCOLOR 1            Set color for pen.
+	; TO name def END.      Defines a procedure "name" with definition "def"
+	;                       "def" can be any single command, or a list of
+	;                       commands between [ and ].
         ; QUIT                  Exit to command line (only .COM version)
 	;
 
