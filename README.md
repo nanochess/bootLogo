@@ -85,6 +85,25 @@ Pen down. The turtle draws again.
 
 Set color for pen. Only 0-3 available in CGA, and 0-15 for EGA/VGA.
 
+### TO [name] [command or list of commands] END
+
+This command allows you to define procedures. All the definition should fit inside one line (120 characters).
+
+A single command could be a REPEAT. Several commands can be grouped using [ and ].
+
+For example:
+
+    TO CURVE REPEAT 4 [LT 10 FD 10] END
+    TO PETAL [CURVE LT 140 CURVE] END
+    TO FLOWER REPEAT 4 [PETAL LT 50] END
+    FLOWER
+    RT 180
+    FD 50
+    RT 140
+    PETAL
+    PU
+    FD 50
+    
 ### QUIT
 
 Exit to command line (only .COM version)

@@ -58,18 +58,22 @@ color2:         equ 3   ; Color for drawing.
     %endif
 
 	;
-	; Variables are saved into the non-visible portion of video RAM.
+	; Variables are saved just after the program.
 	;
-ANGLE:  equ 0xfa00	; Current angle of the turtle.
-X_COOR: equ 0xfa02      ; Current fractional X-coordinate (9.7)
-Y_COOR: equ 0xfa04      ; Current fractional Y-coordinate (9.7)
-PEN:	equ 0xfa06	; Current pen state.
-COLOR:	equ 0xfa07	; Current pen color.
+ANGLE:  equ $+0x0400	; Current angle of the turtle.
+X_COOR: equ $+0x0402    ; Current fractional X-coordinate (9.7)
+Y_COOR: equ $+0x0404    ; Current fractional Y-coordinate (9.7)
+PEN:	equ $+0x0406    ; Current pen state.
+COLOR:	equ $+0x0407	; Current pen color.
+NEXT:	equ $+0x0409
+PROCS:	equ $+0x040b	; Procedures.
 
-BUFFER: equ 0xfb00	; Buffer for commands.
+BUFFER: equ $+0x0300	; Buffer for commands.
 
 FRACTION_BITS:  equ 7   ; How many bits has the fraction.
 UNIT:   equ 0x01<<FRACTION_BITS ; An unit.
+
+PROC_SIZE:	equ 0x007e	; Maximum size of a procedure.
 
 	;
 	; Cold start of bootLogo
@@ -78,27 +82,14 @@ start:
 	;
 	; Command CLEARSCREEN
 	;
-command_clearscreen:
-        cld
-        mov ax,video_mode
-        int 0x10	; Set video mode.
-
         push cs
         push cs
         pop ds
         pop es
-
-        mov di,ANGLE	; Point to ANGLE variable.
-        xor ax,ax	; Zero (north)
-        stosw		; Store word.
-        mov ah,UNIT*160/256     ; Initial X-coordinate.
-        stosw		; Store word.
-        mov ah,UNIT*100/256     ; Initial Y-coordinate.
-        stosw		; Store word.
-	inc ax		; Pen down.
-	stosb		; Store byte.
-	mov al,color2	; Color for pen.
-	stosb		; Store byte.
+        cld
+	call command_clearscreen
+	mov ax,PROCS
+	stosw
 
 	;
 	; Wait for command.
@@ -107,10 +98,9 @@ wait_for_command:
         mov ax,wait_for_command
         push ax
 
-        xor dx,dx       ; Point to command row.
+        mov dl,0        ; Point to first column.
         call set_cursor
-        mov ax,0x0920   ; Output character function in AH and space in AL.
-        mov cl,40       ; Erase the 40 characters.
+        mov al,' '      ; ASCII space character in AL.
         int 0x10        ; Call BIOS.
 
         call xor_turtle	; Show turtle (1st XOR)
@@ -119,29 +109,21 @@ wait_for_command:
 	push di
         mov al,'>'	; Show prompt character.
 input_loop:
-        mov dx,di	; Column in dl.
+        mov dx,di	; Get column.
+	jmp input_loop3
+
 input_loop2:
-        push ax
-        xchg ax,dx
-        mov ah,0
-        mov cl,40
-        div cl          ; Limit column to 0-39.
-        mov dl,ah       ; Column in dl.
-        mov dh,0	; Row in dh.
+        mov al,' '      ; Erase previous character with a space.
+	mov dx,di	; Point to previous character.
+	dec di		; Buffer pointer gets back.
+input_loop3:
         call set_cursor
-        pop ax              
-        mov ah,0x09     ; Output character function in AH.
-        inc cx          ; One character.
+        mov cl,1        ; One character.
         int 0x10	; Call BIOS.
         mov ah,0x00	; Wait for key function.
         int 0x16	; Call BIOS.
 	cmp al,0x08	; Backspace?
-	jne .2		; No, jump.
-	mov dx,di	; Point to previous character.
-	dec di		; Buffer pointer gets back.
-        mov al,' '      ; Erase previous character with a space.
-	jmp input_loop2
-.2:
+	jz input_loop2	; Yes, jump.
         cmp al,'a'	; Is it lowercase?
         jb .1
         cmp al,'z'+1
@@ -157,41 +139,46 @@ input_loop2:
 	pop si		; SI points to start of the command buffer.
 
 	;
+	; Run commands alone or in a list.
+	;
+run_commands:
+	call avoid_spaces
+	cmp al,'['		; Is it a list of commands?
+	jne run_command		; No, jump to process a single command.
+        inc si                  ; Avoid list character '['.
+.1:
+	call run_command
+	call avoid_spaces
+	cmp al,']'		; Is it end of list?
+	jne .1			; No, keep reading commands.
+        inc si                  ; Avoid list character ']'.
+	ret
+
+	;
 	; Run a command.
 	; SI = Pointer to current position in buffer.
 	;
 run_command:
 	call avoid_spaces
         mov di,commands	; DI points to command list.
+	mov cx,11	; Eleven commands.
 	lodsw		; Read command to execute.
 .1:
         scasw           ; Compare with command from table.
-        jz .2		; Jump if same.
-	scasw		; Avoid command address.
-        test byte [di],0xff
-        jnz short .1	; Compare another command.
-	jmp short avoid_command
+        jz found	; Jump if same.
+	scasb		; Avoid command address.
+	loop .1
 
-	;
-	; Command found.
-	;
-.2:     call avoid_command
-        xor cx,cx	; Set number to zero.
-.3:
-        lodsb		; Get a character.
-        sub al,'0'	; Is it a number?
-        cmp al,10
-        jnb .5		; No, jump.
-        cbw
-	push ax		; ah guaranteed to be zero.
-        mov al,10	; cx = cx * 10 + digit
-        mul cx
-	pop cx
-        add cx,ax
-        jmp short .3	; Keep reading number.
-.5:
-	dec si
-        jmp [di]        ; Call the command.
+	mov di,PROCS-PROC_SIZE
+.7:	lea di,[di+PROC_SIZE]
+	cmp di,[NEXT]
+	je avoid_command
+	scasw		; Compare against procedure name.
+	jnz .7		; Jump if not the same.
+	push si
+	mov si,di
+	call run_commands
+	pop si
 
 	;
 	; Avoid extra letters of command.
@@ -213,33 +200,98 @@ avoid_spaces:
 	dec si
 	ret
 
+	;
+	; Command found.
+	;
+found:  call avoid_command
+        xor cx,cx	; Set number to zero.
+.3:
+        lodsb		; Get a character.
+        sub al,'0'	; Is it a number?
+        cmp al,10
+        jnb .5		; No, jump.
+        cbw
+	push ax		; ah guaranteed to be zero.
+        mov al,10	; cx = cx * 10 + digit
+        mul cx
+	pop cx
+        add cx,ax
+        jmp short .3	; Keep reading number.
+.5:
+	dec si
+	mov al,[di]	; Get displacement byte.
+	cbw		; Extend to 8-bit.
+	add di,ax	; Add to address.
+        jmp di          ; Call the command.
+
+commands:
+	db "CL"
+	db command_clearscreen-$
+        db "FD"
+        db command_fd-$
+        db "BK"
+        db command_bk-$
+        db "RT"
+        db command_rt-$
+        db "LT"
+        db command_lt-$
+	db "RE"
+	db command_repeat-$
+	db "PU"
+	db command_pu-$
+	db "PD"
+	db command_pd-$
+	db "SE"
+	db command_setcolor-$
+	db "TO"
+	db command_to-$
+        db "QU"
+        db command_quit-$
+
+	;
+	; CLEARSCREEN command
+	;
+command_clearscreen:
+        mov ax,video_mode
+        int 0x10	; Set video mode.
+
+        mov di,ANGLE	; Point to ANGLE variable.
+        xor ax,ax	; Zero (north)
+        stosw		; Store word.
+        mov ah,UNIT*160/256     ; Initial X-coordinate.
+        stosw		; Store word.
+        mov ah,UNIT*100/256     ; Initial Y-coordinate.
+        stosw		; Store word.
+	inc ax		; Pen down.
+	stosb		; Store byte.
+	mov ax,0x0c00+color2	; Color for pen plus Set Pixel function code.
+	stosw		; Store word.
+	ret
+
 repeat_loop:
-        pop si
+        pop si			; Restore start position to re-parse.
 	;
 	; REPEAT command
 	;
 command_repeat:
-        push si                 ; Save counter of repeats.
-        push cx                 ; Save position in buffer.
-	call avoid_spaces
-	cmp al,'['		; Is it a list of commands?
-        pushf
-        jne .2                  ; No, jump.
-        inc si                  ; Avoid list character '['.
-.2:
-	call run_command
-        popf
-        pushf
-	jne .3
-	call avoid_spaces
-	cmp al,']'		; Is it end of list?
-	jne .2			; No, keep reading commands.
-        inc si                  ; Avoid list character ']'.
-.3:
-        popf
-        pop cx                  ; Restore position in buffer.
+        push si                 ; Save position in buffer.
+        push cx                 ; Save repeat count.
+	call run_commands
+        pop cx                  ; Restore count.
         loop repeat_loop
-        pop di                  ; Forgottens start position, keeps new.
+        pop di                  ; Ignore start position, keep advanced position.
+	ret
+
+	;
+	; TO command
+	;
+command_to:
+	mov di,[NEXT]		; Pointer to space for next procedure.
+	movsw			; Copy procedure name (only 2 letters)
+	call avoid_command	; Avoid extra letters.
+	mov cx,PROC_SIZE
+	rep movsb		; Copy procedure body.
+	mov [NEXT],di		; Update pointer.
 	ret
 
 	;
@@ -257,16 +309,7 @@ command_fd:
 	; Set pixel.
 	; 
 pixel_set:
-	test byte [PEN],0xff
-	jz .1
-        push ax
-        push cx
-	call get_xy
-        int 0x10
-        pop cx
-	pop ax
-.1:
-        call advance
+	call draw_pixel	; Draw in X,Y coordinates.
         loop pixel_set
         ret
 
@@ -321,35 +364,21 @@ xor_turtle:
 .1:	call advance		; Advance to get turtle nose.
         loop .1			; Until reaching 5 pixels.
 				; ch guaranteed to be zero here.
-        mov al,210		; +210 degrees offset.
-        call xor_line10		; Draw line.
-        mov al,70		; +70 degrees offset.
-        call xor_line		; Draw line.
-        mov al,110		; +110 degrees offset.
-        call xor_line		; Draw line.
-        mov ax,330		; +330 degrees offset.
-        call xor_line10		; Draw line.
+	mov si,turtle_angles
+.2:	lodsb
+	test al,al
+	jz .4
+
+	mov cl,5
+	mul cl
+.3:
+	mov bx,0x0080		; XOR pixel.
+	call draw_pixel2	; Draw in X,Y coordinates.
+        loop .3			; Loop to draw the line.
+	jmp .2
+.4:
         pop word [Y_COOR]	; Restore Y-coordinate.
         pop word [X_COOR]	; Restore X-coordinate.
-        ret			; Return.
-
-	;
-	; XOR a line on the screen.
-	; 
-xor_line10:
-	mov cl,10
-xor_line:
-.1:
-	push ax
-        push cx
-	call get_xy		; Get X,Y coordinates.
-        or al,0x80      	; XOR mode.
-        int 0x10		; Draw pixel.
-        pop cx
-	pop ax
-	call advance
-        loop .1			; Loop to draw the line.
-	mov cl,5
         ret			; Return.
 
 	;
@@ -388,6 +417,28 @@ limit:
         ret		; Return.
 
 	;
+        ; Draw pixel in current X,Y integer coordinates.
+	;
+draw_pixel:
+	test byte [PEN],0x01
+	jz draw_pixel3
+	xor bx,bx	; Set pixel.
+draw_pixel2:
+	push ax
+	push cx
+        mov cl,FRACTION_BITS
+        mov ax,[X_COOR] ; Get X-coordinate.
+        shr ax,cl       ; Remove fractional part.
+        mov dx,[Y_COOR] ; Get Y-coordinate.
+        shr dx,cl       ; Remove fractional part.
+        xchg ax,cx
+	mov ax,[COLOR]	; Color in AL and Set Pixel function in AH...
+	or al,bl	; ...plus mode (SET or XOR).
+	int 0x10
+	pop cx
+	pop ax
+draw_pixel3:
+	;
 	; Advance turtle in direction.
 	; ax = Offset in degrees for angle.
 	;
@@ -404,53 +455,27 @@ advance:
 	pop ax
         ret
 
-	;
-        ; Get current X,Y integer coordinates.
-	;
-get_xy:
-        mov cl,FRACTION_BITS
-        mov ax,[X_COOR] ; Get X-coordinate.
-        shr ax,cl       ; Remove fractional part.
-        mov dx,[Y_COOR] ; Get Y-coordinate.
-        shr dx,cl       ; Remove fractional part.
-        xchg ax,cx
-        mov bh,0x00     ; Page.
-	mov al,[COLOR]	; Color in AL.
-        mov ah,0x0c     ; Set pixel function in AH.
-	ret
-
 set_cursor:
+	mov cx,40
+	sub dl,cl
+	jnb set_cursor
+	add dl,cl
+	mov dh,21	; Row 21 of the screen.
         mov bx,color1   ; Page (bh) and color (bl).
         mov ah,0x02     ; Set video row, column function.
         int 0x10	; Call BIOS.
-        xor cx,cx
+	mov ah,0x09
         ret
 
-commands:
-        db "FD"
-        dw command_fd
-        db "BK"
-        dw command_bk
-        db "RT"
-        dw command_rt
-        db "LT"
-        dw command_lt
-	db "RE"
-	dw command_repeat
-	db "PU"
-	dw command_pu
-	db "PD"
-	dw command_pd
-	db "CL"
-	dw command_clearscreen
-	db "SE"
-	dw command_setcolor
-        db "QU"
-        dw command_quit
+turtle_angles:
+	db 210/5
+	db 210/5
+	db 70/5
+	db 110/5
+	db 330/5
+	db 330/5
+
 	;
-	; The end of the commands list is signaled by a zero-byte
-	; (provided by the first byte of sin_table)
-        ;
         ; sin() function table
         ; It must follow FRACTION_BITS.
 	;
