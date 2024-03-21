@@ -67,9 +67,8 @@ ANGLE:  equ $+0x0400	; Current angle of the turtle.
 X_COOR: equ $+0x0402    ; Current fractional X-coordinate (9.7)
 Y_COOR: equ $+0x0404    ; Current fractional Y-coordinate (9.7)
 PEN:	equ $+0x0406    ; Current pen state.
-COLOR:	equ $+0x0407	; Current pen color.
-NEXT:	equ $+0x0409
-PROCS:	equ $+0x040b	; Procedures.
+NEXT:	equ $+0x0407
+PROCS:	equ $+0x0409	; Procedures.
 
 BUFFER: equ $+0x0300	; Buffer for commands.
 
@@ -190,20 +189,20 @@ run_command:
 	; Avoid extra letters of command.
 	;
 avoid_command:
-	lodsb
-	sub al,0x41
+	lodsb		; Read a character.
+	sub al,0x41	; Make 'A'-'Z' to be 0-25.
 	cmp al,0x1a	; Is it a letter?
 	jb avoid_command	; Yes, jump.
-	dec si
+	dec si		; Get back to the right point.
 
 	;
 	; Avoid spaces.
 	;
 avoid_spaces:
-	lodsb
+	lodsb		; Read a character.
 	cmp al,0x20	; Is it space?
 	je avoid_spaces	; Yes, jump.
-	dec si
+	dec si		; Get back to the right point.
 	ret
 
 	;
@@ -216,9 +215,9 @@ found:  call avoid_command
         sub al,'0'	; Is it a number?
         cmp al,10
         jnb .5		; No, jump.
-        cbw
-	push ax		; ah guaranteed to be zero.
-        mov al,10	; cx = cx * 10 + digit
+        cbw		; Extend digit 0-9 in AL to AX.
+	push ax		; AH guaranteed to be zero.
+        mov al,10	; CX = CX * 10 + digit
         mul cx
 	pop cx
         add cx,ax
@@ -354,8 +353,6 @@ command_clearscreen:
         stosw		; Store word.
 	inc ax		; Pen down.
 	stosb		; Store byte.
-	mov ax,0x0c00+color2	; Color for pen plus Set Pixel function code.
-	stosw		; Store word.
 	ret
 
 repeat_loop:
@@ -459,7 +456,10 @@ draw_pixel2:
         mov dx,[Y_COOR] ; Get Y-coordinate.
         shr dx,cl       ; Remove fractional part.
         xchg ax,cx
-	mov ax,[COLOR]	; Color in AL and Set Pixel function in AH...
+
+COLOR:	equ $+1		; Self-modifying code.
+	mov ax,0x0c00+color2	; Color for pen plus Set Pixel function code.
+
 	or al,bl	; ...plus mode (SET or XOR).
 	int 0x10
 	pop cx
