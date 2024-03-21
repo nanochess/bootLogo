@@ -99,7 +99,7 @@ wait_for_command:
         push ax
 
         mov dl,0        ; Point to first column.
-        call set_cursor
+        call set_cursor	; CH is zero from here.
         mov al,' '      ; ASCII space character in AL.
         int 0x10        ; Call BIOS.
 
@@ -117,7 +117,7 @@ input_loop2:
 	mov dx,di	; Point to previous character.
 	dec di		; Buffer pointer gets back.
 input_loop3:
-        call set_cursor
+        call set_cursor	; CH is zero from here.
         mov cl,1        ; One character.
         int 0x10	; Call BIOS.
         mov ah,0x00	; Wait for key function.
@@ -292,7 +292,7 @@ limit:
 xor_turtle:
         push word [X_COOR]	; Save X-coordinate.
         push word [Y_COOR]	; Save Y-coordinate.
-        mov cx,5  		; 5 pixels.
+        mov cl,5  		; 5 pixels (depends on CH being zero).
 	xor ax,ax
 .1:	call advance		; Advance to get turtle nose.
         loop .1			; Until reaching 5 pixels.
