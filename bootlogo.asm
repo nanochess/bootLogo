@@ -225,10 +225,94 @@ found:  call avoid_command
         jmp short .3	; Keep reading number.
 .5:
 	dec si
-	mov al,[di]	; Get displacement byte.
-	cbw		; Extend to 8-bit.
-	add di,ax	; Add to address.
-        jmp di          ; Call the command.
+			; >>> This depends on all commands and command table located 
+			;     inside the same 256-byte page <<<
+	push di
+	pop ax		; To get high byte of address.
+	add al,[di]	; Get location (low byte).
+
+	jmp ax
+
+	;
+	; Set cursor position.
+	; DL = column (0-255).
+	;
+set_cursor:
+	mov cx,40	; 40 columns.
+.1:
+	sub dl,cl	; Limit column to range 0-39.
+	jnb .1
+	add dl,cl
+
+	mov dh,21	; Row 21 of the screen.
+        mov bx,color1   ; Page (bh) and color (bl).
+        mov ah,0x02     ; Set video row, column function.
+        int 0x10	; Call BIOS.
+	mov ah,0x09
+        ret
+
+	;
+	; Limit the angle to 0-359 and then to the size of the sin table.
+	;
+limit:
+	mov bx,360	; 360 degrees is the limit.
+
+        cwd		; Sign extend AX to DX:AX
+	idiv bx		; Limit it to 360 degrees...
+	or dx,dx	; ...by getting modulo.
+	jns .1
+	add dx,bx	; Make modulo positive.
+.1:
+        mov ax,128	; Multiply by sin table length.
+        mul dx
+        div bx		; Divide by 360 degrees.
+                        ; Now AX is between 0 and 127.
+                        ; (this means AH is zero)
+        ;
+        ; Get sine
+        ;
+        test al,64      ; Angle >= 180 degrees?
+        pushf
+        test al,32      ; Angle 90-179 or 270-359 degrees?
+        je .2
+        xor al,31       ; Invert bits (reduces table)
+.2:
+        and al,31       ; Only 90 degrees in table
+        mov bx,sin_table
+        xlat            ; Get fraction
+        popf
+        je .3           ; Jump if angle less than 180
+        neg ax          ; Else negate result
+.3:
+        ret		; Return.
+
+	;
+	; XOR turtle against the background.
+	;
+xor_turtle:
+        push word [X_COOR]	; Save X-coordinate.
+        push word [Y_COOR]	; Save Y-coordinate.
+        mov cx,5  		; 5 pixels.
+	xor ax,ax
+.1:	call advance		; Advance to get turtle nose.
+        loop .1			; Until reaching 5 pixels.
+				; ch guaranteed to be zero here.
+	mov si,turtle_angles	; Table to draw the turtle.
+	lodsb			; Get angle for this line.
+
+.2:	mov cl,5
+	mul cl
+.3:
+	mov bx,0x0080		; XOR pixel.
+	call draw_pixel2	; Draw in X,Y coordinates.
+        loop .3			; Loop to draw the line.
+	lodsb			; Get angle for next line.
+	test al,al		; Is it zero?
+	jnz .2
+.4:
+        pop word [Y_COOR]	; Restore Y-coordinate.
+        pop word [X_COOR]	; Restore X-coordinate.
+        ret			; Return.
 
 commands:
 	db "CL"
@@ -360,69 +444,6 @@ command_quit:
         int 0x20	; Exit to DOS or bootOS.
 
 	;
-	; XOR turtle against the background.
-	;
-xor_turtle:
-        push word [X_COOR]	; Save X-coordinate.
-        push word [Y_COOR]	; Save Y-coordinate.
-        mov cx,5  		; 5 pixels.
-	xor ax,ax
-.1:	call advance		; Advance to get turtle nose.
-        loop .1			; Until reaching 5 pixels.
-				; ch guaranteed to be zero here.
-	mov si,turtle_angles	; Table to draw the turtle.
-	lodsb			; Get angle for this line.
-
-.2:	mov cl,5
-	mul cl
-.3:
-	mov bx,0x0080		; XOR pixel.
-	call draw_pixel2	; Draw in X,Y coordinates.
-        loop .3			; Loop to draw the line.
-	lodsb			; Get angle for next line.
-	test al,al		; Is it zero?
-	jnz .2
-.4:
-        pop word [Y_COOR]	; Restore Y-coordinate.
-        pop word [X_COOR]	; Restore X-coordinate.
-        ret			; Return.
-
-	;
-	; Limit the angle to 0-359 and then to the size of the sin table.
-	;
-limit:
-	mov bx,360	; 360 degrees is the limit.
-
-        cwd		; Sign extend AX to DX:AX
-	idiv bx		; Limit it to 360 degrees...
-	or dx,dx	; ...by getting modulo.
-	jns .1
-	add dx,bx	; Make modulo positive.
-.1:
-        mov ax,128	; Multiply by sin table length.
-        mul dx
-        div bx		; Divide by 360 degrees.
-                        ; Now AX is between 0 and 127.
-                        ; (this means AH is zero)
-        ;
-        ; Get sine
-        ;
-        test al,64      ; Angle >= 180 degrees?
-        pushf
-        test al,32      ; Angle 90-179 or 270-359 degrees?
-        je .2
-        xor al,31       ; Invert bits (reduces table)
-.2:
-        and al,31       ; Only 90 degrees in table
-        mov bx,sin_table
-        xlat            ; Get fraction
-        popf
-        je .3           ; Jump if angle less than 180
-        neg ax          ; Else negate result
-.3:
-        ret		; Return.
-
-	;
         ; Draw pixel in current X,Y integer coordinates.
 	;
 draw_pixel:
@@ -459,18 +480,6 @@ advance:
         call limit
         sub [Y_COOR],ax	; Subtract to Y-coordinate.
 	pop ax
-        ret
-
-set_cursor:
-	mov cx,40	; 40 columns.
-	sub dl,cl	; Limit column to range 0-39.
-	jnb set_cursor
-	add dl,cl
-	mov dh,21	; Row 21 of the screen.
-        mov bx,color1   ; Page (bh) and color (bl).
-        mov ah,0x02     ; Set video row, column function.
-        int 0x10	; Call BIOS.
-	mov ah,0x09
         ret
 
 turtle_angles:
