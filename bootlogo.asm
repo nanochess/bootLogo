@@ -371,17 +371,17 @@ xor_turtle:
         loop .1			; Until reaching 5 pixels.
 				; ch guaranteed to be zero here.
 	mov si,turtle_angles	; Table to draw the turtle.
-.2:	lodsb			; Get angle for this line.
-	test al,al		; Is it zero?
-	jz .4			; Yes, finish.
+	lodsb			; Get angle for this line.
 
-	mov cl,5
+.2:	mov cl,5
 	mul cl
 .3:
 	mov bx,0x0080		; XOR pixel.
 	call draw_pixel2	; Draw in X,Y coordinates.
         loop .3			; Loop to draw the line.
-	jmp .2
+	lodsb			; Get angle for next line.
+	test al,al		; Is it zero?
+	jnz .2
 .4:
         pop word [Y_COOR]	; Restore Y-coordinate.
         pop word [X_COOR]	; Restore X-coordinate.
@@ -391,13 +391,13 @@ xor_turtle:
 	; Limit the angle to 0-359 and then to the size of the sin table.
 	;
 limit:
-	mov bx,360
+	mov bx,360	; 360 degrees is the limit.
 
-        cwd
+        cwd		; Sign extend AX to DX:AX
 	idiv bx		; Limit it to 360 degrees...
 	or dx,dx	; ...by getting modulo.
 	jns .1
-	add dx,bx
+	add dx,bx	; Make modulo positive.
 .1:
         mov ax,128	; Multiply by sin table length.
         mul dx
