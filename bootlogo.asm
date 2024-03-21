@@ -482,6 +482,10 @@ advance:
 	pop ax
         ret
 
+	;
+	; Shape for the turtle.
+	; It draws 5 pixels in each of the following relative angles.
+	;
 turtle_angles:
 	db 210/5
 	db 210/5
@@ -489,6 +493,9 @@ turtle_angles:
 	db 110/5
 	db 330/5
 	db 330/5
+	;
+	; Table ending marked by a zero byte taken from the start of sin_table.
+	;
 
 	;
         ; sin() function table
