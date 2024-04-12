@@ -1,24 +1,24 @@
 # Makefile contributed by jtsiomb
 
-src = basic.asm
+src = bootlogo.asm
 
 .PHONY: all
-all: basic.img basic.com
+all: bootlogo.img bootlogo.com
 
-basic.img: $(src)
+bootlogo.img: $(src)
 	nasm -f bin -o $@ $(src)
 
-basic.com: $(src)
+bootlogo.com: $(src)
 	nasm -f bin -o $@ -Dcom_file=1 $(src)
 
 .PHONY: clean
 clean:
-	$(RM) basic.img basic.com
+	$(RM) bootlogo.img bootlogo.com
 
 .PHONY: rundosbox
-rundosbox: basic.com
+rundosbox: bootlogo.com
 	dosbox $<
 
 .PHONY: runqemu
-runqemu: basic.img
-	qemu-system-i386 -fda basic.img
+runqemu: bootlogo.img
+	qemu-system-i386 -fda bootlogo.img
